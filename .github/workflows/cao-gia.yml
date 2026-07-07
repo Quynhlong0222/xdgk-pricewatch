@@ -25,7 +25,10 @@ jobs:
           python-version: "3.12"
 
       - name: Cao gia
-        run: python crawl.py
+        env:
+          MAX_XDGK_PRODUCTS: "2500"
+          XDGK_CRAWL_WORKERS: "8"
+        run: python -u crawl.py
 
       - name: Luu ket qua
         shell: bash

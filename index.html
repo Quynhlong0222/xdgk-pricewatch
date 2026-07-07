@@ -31,7 +31,7 @@
   .tabs{display:flex;background:#e9eef5;border-radius:10px;padding:3px}
   .tabs button{border:0;background:transparent;padding:6px 13px;border-radius:8px;font-size:12.5px;color:var(--muted);font-family:inherit;font-weight:600;cursor:pointer}
   .tabs button.active{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-  input{border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text)}
+  input,select{border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text)}
   .main{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
   @media(max-width:900px){.main{grid-template-columns:1fr}}
   table{width:100%;border-collapse:collapse}
@@ -86,6 +86,7 @@
     <button data-v="compare">So với giá XDGK</button>
   </div>
   <input type="search" id="q" placeholder="🔍 Tìm sản phẩm..." style="width:200px">
+  <select id="brand" aria-label="Lọc thương hiệu"><option value="all">Tất cả thương hiệu</option></select>
 </div>
 
 <div class="main">
@@ -102,10 +103,12 @@
 
 <script>
 const REGION={me:{n:"XDGK",cc:"#f26522"},bac:{n:"Miền Bắc",cc:"#2563eb"},trung:{n:"Miền Trung",cc:"#d97706"},nam:{n:"Miền Nam",cc:"#059669"}};
-let hist={runs:[],items:{}},region="all",view="market",q="",selected=null,chart=null;
+let hist={runs:[],items:{}},region="all",view="market",q="",brand="all",selected=null,chart=null;
 const $=id=>document.getElementById(id);
 const fmt=v=>v.toLocaleString("vi-VN")+"đ";
-const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const isActive=it=>it&&it.active!==false&&Array.isArray(it.hist)&&it.hist.length;
+const brandKey=s=>(s||"").toLowerCase();
 
 const STOP=new Set(["xe","dap","the","thao","hang","sale","chinh","inch","banh","khung","nhom","mau","tre","em","thanh","pho","dia","hinh","dua","mini","gap","nu","be","gai","trai","touring","mtb","city"]);
 function tokens(name){
@@ -121,26 +124,28 @@ function matchScore(a,b){
 function matchesFor(url){
   const it=hist.items[url];if(!it)return[];
   return Object.entries(hist.items)
-    .filter(([u,o])=>u!==url&&o.me!==it.me)
+    .filter(([u,o])=>u!==url&&o.me!==it.me&&isActive(o))
     .map(([u,o])=>({url:u,it:o,score:matchScore(it.name,o.name)}))
     .filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
 }
 function itemList(){
   return Object.entries(hist.items).map(([url,it])=>({url,...it}))
+    .filter(isActive)
     .filter(it=>region==="all"||it.region===region||(region==="me"&&it.me))
-    .filter(it=>!q||it.name.toLowerCase().includes(q));
+    .filter(it=>brand==="all"||brandKey(it.brand)===brand)
+    .filter(it=>!q||[it.name,it.brand,it.category,it.seller].filter(Boolean).join(" ").toLowerCase().includes(q));
 }
 function delta(it){
   const h=it.hist;if(h.length<2)return null;
   return {v:h[h.length-1].p-h[h.length-2].p,pct:(h[h.length-1].p-h[h.length-2].p)/h[h.length-2].p};
 }
 function renderKpis(){
-  const all=Object.values(hist.items);
+  const all=Object.values(hist.items).filter(isActive);
   const mine=all.filter(i=>i.me).length,comp=all.length-mine;
   const lastRun=hist.runs[hist.runs.length-1];
   let win=0,tot=0;
   Object.entries(hist.items).forEach(([u,it])=>{
-    if(!it.me)return;const ms=matchesFor(u).filter(m=>m.score>=2);
+    if(!it.me||!isActive(it))return;const ms=matchesFor(u).filter(m=>m.score>=2);
     if(!ms.length)return;tot++;
     const myP=it.hist[it.hist.length-1].p;
     if(ms.every(m=>myP<=m.it.hist[m.it.hist.length-1].p))win++;
@@ -152,9 +157,17 @@ function renderKpis(){
     <div class="kpi"><div class="lbl">Thay đổi giá lần cào cuối</div><div class="val ${lastRun&&lastRun.changed?"warn":""}">${lastRun?lastRun.changed:"—"}</div></div>`;
   $("lastRun").textContent=lastRun?("Cập nhật: "+new Date(lastRun.t).toLocaleString("vi-VN")):"Chưa có dữ liệu";
 }
+function renderBrandFilter(){
+  const el=$("brand");if(!el)return;
+  const brands=[...new Set(Object.values(hist.items).filter(isActive).map(i=>i.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"vi"));
+  const cur=brand;
+  el.innerHTML='<option value="all">Tất cả thương hiệu</option>'+brands.map(b=>`<option value="${esc(brandKey(b))}">${esc(b)}</option>`).join("");
+  brand=brands.some(b=>brandKey(b)===cur)?cur:"all";
+  el.value=brand;
+}
 function renderTable(){
   const w=$("tblWrap");
-  if(!Object.keys(hist.items).length){w.innerHTML='<div class="empty">Chưa có dữ liệu — chạy workflow "Cào giá" trong tab Actions của repo.</div>';return}
+  if(!Object.values(hist.items).some(isActive)){w.innerHTML='<div class="empty">Chưa có dữ liệu — chạy workflow "Cào giá" trong tab Actions của repo.</div>';return}
   if(view==="market"){
     const list=itemList().sort((a,b)=>{const da=delta(a),db=delta(b);return Math.abs(db?db.pct:0)-Math.abs(da?da.pct:0)||a.name.localeCompare(b.name)});
     w.innerHTML=`<table><thead><tr><th>Sản phẩm</th><th>Web</th><th>Giá hiện tại</th><th>Δ so lần trước</th></tr></thead><tbody>${
@@ -162,20 +175,24 @@ function renderTable(){
         const d=delta(it),p=it.hist[it.hist.length-1].p;
         const dc=d?(d.v>0?`<span class="chg up">▲ ${fmt(d.v)}</span>`:`<span class="chg down">▼ ${fmt(-d.v)}</span>`):`<span class="chg flat">—</span>`;
         const rc=it.me?"#f26522":REGION[it.region].cc;
+        const meta=[it.brand,it.category].filter(Boolean).join(" · ");
         return `<tr data-u="${esc(it.url)}" class="${it.url===selected?"sel":""}">
-          <td class="pn"><b>${esc(it.name)}</b></td>
+          <td class="pn"><b>${esc(it.name)}</b>${meta?`<span class="hint">${esc(meta)}</span>`:""}</td>
           <td><span class="rtag" style="color:${rc};background:${rc}18">${esc(it.seller)}</span></td>
           <td><span class="price ${it.me?"me":""}">${fmt(p)}</span></td><td>${dc}</td></tr>`;
       }).join("")}</tbody></table>`;
   }else{
-    const rows=Object.entries(hist.items).filter(([u,it])=>it.me).map(([u,it])=>{
+    const rows=Object.entries(hist.items).filter(([u,it])=>it.me&&isActive(it)).map(([u,it])=>{
       const ms=matchesFor(u).filter(m=>region==="all"||region==="me"||m.it.region===region);
       if(!ms.length)return null;
       const myP=it.hist[it.hist.length-1].p;
       const bt=ms.reduce((m,x)=>x.it.hist[x.it.hist.length-1].p<m.it.hist[m.it.hist.length-1].p?x:m);
       const bp=bt.it.hist[bt.it.hist.length-1].p,dd=(myP-bp)/bp;
       return {u,it,myP,bt,bp,dd};
-    }).filter(Boolean).filter(r=>!q||r.it.name.toLowerCase().includes(q)).sort((a,b)=>b.dd-a.dd);
+    }).filter(Boolean)
+      .filter(r=>brand==="all"||brandKey(r.it.brand)===brand)
+      .filter(r=>!q||[r.it.name,r.it.brand,r.it.category].filter(Boolean).join(" ").toLowerCase().includes(q))
+      .sort((a,b)=>b.dd-a.dd);
     w.innerHTML=rows.length?`<table><thead><tr><th>SP của XDGK</th><th>Giá XDGK</th><th>Rẻ nhất thị trường</th><th>Chênh lệch</th></tr></thead><tbody>${
       rows.map(r=>`<tr data-u="${esc(r.u)}" class="${r.u===selected?"sel":""}">
         <td class="pn"><b>${esc(r.it.name)}</b></td>
@@ -189,7 +206,7 @@ function renderTable(){
 }
 function renderDetail(){
   const it=hist.items[selected];
-  if(!it){if(chart){chart.destroy();chart=null}return}
+  if(!it||!isActive(it)){if(chart){chart.destroy();chart=null}return}
   $("dTitle").textContent=it.name;
   $("dSub").innerHTML=`${esc(it.seller)} · <a href="${esc(selected)}" target="_blank" rel="noopener">mở trang sản phẩm ↗</a>`;
   const ms=matchesFor(selected);
@@ -223,11 +240,12 @@ function renderDetail(){
       <span class="price">${fmt(p)}</span></div>`;
   }).join(""):"<p class='hint' style='margin-top:6px'>Chưa có sản phẩm khớp tên ở web khác.</p>");
 }
-function renderAll(){renderKpis();renderTable();renderDetail()}
+function renderAll(){renderBrandFilter();renderKpis();renderTable();renderDetail()}
 
 document.querySelectorAll("#rtabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#rtabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");region=b.dataset.r;renderTable()});
 document.querySelectorAll("#vtabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#vtabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");view=b.dataset.v;renderTable()});
 $("q").oninput=e=>{q=e.target.value.toLowerCase();renderTable()};
+$("brand").onchange=e=>{brand=e.target.value;renderTable()};
 
 fetch(new URL("gia-lich-su.json?t="+Date.now(), window.location.href),{cache:"no-store"})
   .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
