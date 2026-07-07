@@ -183,7 +183,7 @@ def discover_product_urls(src):
         u=normalize_url(u)
         if u and u not in seen:
             seen.add(u); out.append(u)
-    limit = int(os.getenv("MAX_XDGK_PRODUCTS", "2500"))
+    limit = int(os.getenv("MAX_XDGK_PRODUCTS", "1200"))
     return out[:limit]
 
 def parse_xdgk_product(url):
