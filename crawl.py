@@ -18,7 +18,7 @@ import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
 
-SOURCES = [
+DEFAULT_SOURCES = [
   {"id":"xdgk","name":"Xe Đạp Giá Kho","region":"me","url":"https://xedapgiakho.com/","base":"https://xedapgiakho.com","me":True,"mode":"xdgk_sitemap","sitemap":"https://xedapgiakho.com/sitemap_index.xml"},
   {"id":"hanoibike","name":"Hanoibike","region":"bac","url":"https://hanoibike.net/","base":"https://hanoibike.net","me":False},
   {"id":"xedapdanang","name":"XĐ Đà Nẵng – Đức Liên","region":"trung","url":"https://xedapdanang.vn/","base":"https://xedapdanang.vn","me":False},
@@ -26,6 +26,7 @@ SOURCES = [
 ]
 
 HIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gia-lich-su.json")
+SOURCES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources.json")
 UA = {
     "User-Agent":"Mozilla/5.0 (compatible; XDGK-PriceWatch/1.0)",
     "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -42,6 +43,19 @@ BRANDS = [
     "Bianchi","Kespor","Fortina","Chevaux","California","Galaxy","Life",
     "Nesto","Merida","Louis Garneau","Maruishi","DTFLY","Inveter",
 ]
+
+def load_sources():
+    if not os.path.exists(SOURCES_FILE):
+        return DEFAULT_SOURCES
+    try:
+        with open(SOURCES_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        sources = data.get("sources", data) if isinstance(data, dict) else data
+        if isinstance(sources, list):
+            return [s for s in sources if s.get("enabled", True)]
+    except Exception as e:
+        print(f"WARN sources.json: {e}", file=sys.stderr)
+    return DEFAULT_SOURCES
 
 def fetch(url, timeout=30):
     req = urllib.request.Request(url, headers=UA)
@@ -272,7 +286,7 @@ def main():
     if not isinstance(hist.get("runs"),list): hist["runs"]=[]
     if not isinstance(hist.get("items"),dict): hist["items"]={}
     t=int(time.time()*1000); total=0; changed=0
-    for src in SOURCES:
+    for src in load_sources():
         try:
             if src.get("mode")=="xdgk_sitemap":
                 items=crawl_xdgk(src)

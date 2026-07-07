@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XDGK PriceWatch — Giá thị trường xe đạp</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"></script>
+<script src="config.js"></script>
 <style>
   :root{color-scheme:light;
     --bg:#f2f5f9;--card:#fff;--border:#e3e8ef;--text:#1e2a3a;--muted:#64748b;
@@ -31,7 +32,9 @@
   .tabs{display:flex;background:#e9eef5;border-radius:10px;padding:3px}
   .tabs button{border:0;background:transparent;padding:6px 13px;border-radius:8px;font-size:12.5px;color:var(--muted);font-family:inherit;font-weight:600;cursor:pointer}
   .tabs button.active{background:#fff;color:var(--primary);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-  input,select{border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text)}
+  input,select,.btn{border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text)}
+  .btn{cursor:pointer;font-weight:700;background:var(--primary);border-color:var(--primary);color:#fff}
+  .btn:disabled{cursor:not-allowed;opacity:.55}
   .main{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
   @media(max-width:900px){.main{grid-template-columns:1fr}}
   table{width:100%;border-collapse:collapse}
@@ -68,6 +71,7 @@
     <p>Xe Đạp Giá Kho vs. đối thủ 3 miền · cập nhật tự động hằng ngày</p>
   </div>
   <div class="grow"></div>
+  <button class="btn" id="runCrawl" type="button">Cào lại ngay</button>
   <span class="hint" id="lastRun">Đang tải dữ liệu...</span>
 </header>
 
@@ -84,9 +88,11 @@
   <div class="tabs" id="vtabs">
     <button data-v="market" class="active">Bảng giá thị trường</button>
     <button data-v="compare">So với giá XDGK</button>
+    <button data-v="brand">Theo thương hiệu</button>
   </div>
   <input type="search" id="q" placeholder="🔍 Tìm sản phẩm..." style="width:200px">
   <select id="brand" aria-label="Lọc thương hiệu"><option value="all">Tất cả thương hiệu</option></select>
+  <span class="hint" id="crawlStatus"></span>
 </div>
 
 <div class="main">
@@ -139,6 +145,30 @@ function delta(it){
   const h=it.hist;if(h.length<2)return null;
   return {v:h[h.length-1].p-h[h.length-2].p,pct:(h[h.length-1].p-h[h.length-2].p)/h[h.length-2].p};
 }
+function cheapestMatch(url){
+  const ms=matchesFor(url).filter(m=>region==="all"||region==="me"||m.it.region===region);
+  if(!ms.length)return null;
+  return ms.reduce((m,x)=>x.it.hist[x.it.hist.length-1].p<m.it.hist[m.it.hist.length-1].p?x:m);
+}
+function brandRows(){
+  const rows={};
+  Object.entries(hist.items).forEach(([u,it])=>{
+    if(!it.me||!isActive(it))return;
+    if(brand!=="all"&&brandKey(it.brand)!==brand)return;
+    if(q&&![it.name,it.brand,it.category].filter(Boolean).join(" ").toLowerCase().includes(q))return;
+    const b=it.brand||"Chưa nhận diện";
+    const row=rows[b]||(rows[b]={brand:b,total:0,matched:0,win:0,lose:0,even:0,gaps:[],sample:u});
+    row.total++;
+    const best=cheapestMatch(u);
+    if(!best)return;
+    row.matched++;
+    const myP=it.hist[it.hist.length-1].p,bp=best.it.hist[best.it.hist.length-1].p;
+    const gap=(myP-bp)/bp;
+    row.gaps.push(gap);
+    if(gap<-0.001)row.win++;else if(gap>0.001)row.lose++;else row.even++;
+  });
+  return Object.values(rows).sort((a,b)=>b.matched-a.matched||b.total-a.total||a.brand.localeCompare(b.brand,"vi"));
+}
 function renderKpis(){
   const all=Object.values(hist.items).filter(isActive);
   const mine=all.filter(i=>i.me).length,comp=all.length-mine;
@@ -168,7 +198,16 @@ function renderBrandFilter(){
 function renderTable(){
   const w=$("tblWrap");
   if(!Object.values(hist.items).some(isActive)){w.innerHTML='<div class="empty">Chưa có dữ liệu — chạy workflow "Cào giá" trong tab Actions của repo.</div>';return}
-  if(view==="market"){
+  if(view==="brand"){
+    const rows=brandRows();
+    w.innerHTML=rows.length?`<table><thead><tr><th>Thương hiệu</th><th>SP XDGK</th><th>Có đối thủ khớp</th><th>XDGK rẻ hơn</th><th>Chênh lệch TB</th></tr></thead><tbody>${
+      rows.map(r=>{
+        const avg=r.gaps.length?r.gaps.reduce((a,b)=>a+b,0)/r.gaps.length:null;
+        const cls=avg===null?"even":avg>0.001?"lose":avg<-0.001?"win":"even";
+        const txt=avg===null?"—":(avg>0?`Đắt hơn ${(avg*100).toFixed(1)}%`:avg<0?`Rẻ hơn ${(-avg*100).toFixed(1)}%`:"Ngang giá");
+        return `<tr data-u="${esc(r.sample)}"><td class="pn"><b>${esc(r.brand)}</b></td><td>${r.total}</td><td>${r.matched}</td><td><span class="delta win">${r.win}</span></td><td><span class="delta ${cls}">${txt}</span></td></tr>`;
+      }).join("")}</tbody></table>`:'<div class="empty">Chưa có dữ liệu thương hiệu trong phạm vi lọc này.</div>';
+  }else if(view==="market"){
     const list=itemList().sort((a,b)=>{const da=delta(a),db=delta(b);return Math.abs(db?db.pct:0)-Math.abs(da?da.pct:0)||a.name.localeCompare(b.name)});
     w.innerHTML=`<table><thead><tr><th>Sản phẩm</th><th>Web</th><th>Giá hiện tại</th><th>Δ so lần trước</th></tr></thead><tbody>${
       list.map(it=>{
@@ -246,6 +285,40 @@ document.querySelectorAll("#rtabs button").forEach(b=>b.onclick=()=>{document.qu
 document.querySelectorAll("#vtabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#vtabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");view=b.dataset.v;renderTable()});
 $("q").oninput=e=>{q=e.target.value.toLowerCase();renderTable()};
 $("brand").onchange=e=>{brand=e.target.value;renderTable()};
+
+async function refreshCrawlStatus(){
+  const cfg=window.XDGK_CONFIG||{};
+  if(!cfg.crawlStatusUrl)return;
+  try{
+    const r=await fetch(cfg.crawlStatusUrl,{cache:"no-store"});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d.run&&d.run.status!=="completed")$("crawlStatus").textContent="Workflow đang chạy: "+d.run.status;
+  }catch(e){}
+}
+async function runCrawlNow(){
+  const cfg=window.XDGK_CONFIG||{};
+  const btn=$("runCrawl"),st=$("crawlStatus");
+  if(!cfg.crawlApiUrl){
+    st.textContent="Chưa cấu hình backend. Đang mở GitHub Actions.";
+    window.open(cfg.actionsUrl||"https://github.com/Quynhlong0222/xdgk-pricewatch/actions/workflows/cao-gia.yml","_blank","noopener");
+    return;
+  }
+  btn.disabled=true;st.textContent="Đang gửi yêu cầu cào...";
+  try{
+    const r=await fetch(cfg.crawlApiUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({source:"dashboard"})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok)throw new Error(d.error||"Không gửi được yêu cầu");
+    st.textContent="Đã gửi yêu cầu. Chờ vài phút rồi tải lại dashboard.";
+  }catch(e){
+    st.textContent="Không gọi được backend. Mở Actions để chạy tay.";
+    window.open(cfg.actionsUrl||"https://github.com/Quynhlong0222/xdgk-pricewatch/actions/workflows/cao-gia.yml","_blank","noopener");
+  }finally{
+    setTimeout(()=>{btn.disabled=false},3000);
+  }
+}
+$("runCrawl").onclick=runCrawlNow;
+refreshCrawlStatus();
 
 fetch(new URL("gia-lich-su.json?t="+Date.now(), window.location.href),{cache:"no-store"})
   .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})

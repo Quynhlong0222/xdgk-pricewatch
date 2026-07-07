@@ -1,0 +1,42 @@
+{
+  "sources": [
+    {
+      "id": "xdgk",
+      "name": "Xe Đạp Giá Kho",
+      "region": "me",
+      "url": "https://xedapgiakho.com/",
+      "base": "https://xedapgiakho.com",
+      "me": true,
+      "mode": "xdgk_sitemap",
+      "sitemap": "https://xedapgiakho.com/sitemap_index.xml",
+      "enabled": true
+    },
+    {
+      "id": "hanoibike",
+      "name": "Hanoibike",
+      "region": "bac",
+      "url": "https://hanoibike.net/",
+      "base": "https://hanoibike.net",
+      "me": false,
+      "enabled": true
+    },
+    {
+      "id": "xedapdanang",
+      "name": "XĐ Đà Nẵng – Đức Liên",
+      "region": "trung",
+      "url": "https://xedapdanang.vn/",
+      "base": "https://xedapdanang.vn",
+      "me": false,
+      "enabled": true
+    },
+    {
+      "id": "xedapthegioi",
+      "name": "Xe Đạp Thế Giới",
+      "region": "nam",
+      "url": "https://xedapthegioi.vn/",
+      "base": "https://xedapthegioi.vn",
+      "me": false,
+      "enabled": true
+    }
+  ]
+}
