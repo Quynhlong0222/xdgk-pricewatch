@@ -69,8 +69,11 @@
   .match-list{max-height:300px;overflow:auto;border-top:1px solid #eef2f7}
   .mrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dashed #eef2f7;font-size:12px;min-width:0}
   .mrow:last-child{border-bottom:0}
-  .mrow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mrow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);text-decoration:none}
+  .mrow .nm:hover{text-decoration:underline}
   .mrow .price{text-align:right}
+  .market-link{color:var(--primary);text-decoration:none}
+  .market-link:hover{text-decoration:underline}
   a{color:var(--primary)}
   .empty{color:var(--muted);text-align:center;padding:30px 10px}
   footer{text-align:center;color:var(--muted);font-size:11.5px;padding:8px}
@@ -134,9 +137,11 @@ const regionInfo=r=>REGION[r]||{n:r||"Khác",cc:"#64748b"};
 const MEASURE_KEY="xdgk_measure_state";
 let measureState={};
 try{measureState=JSON.parse(localStorage.getItem(MEASURE_KEY)||"{}")||{}}catch(e){measureState={}}
+let featureCache={},matchCache={};
 const isMeasured=url=>measureState[url]!==false;
+function clearMatchCaches(){featureCache={};matchCache={}}
 function saveMeasure(){try{localStorage.setItem(MEASURE_KEY,JSON.stringify(measureState))}catch(e){}}
-function setMeasured(url,on){if(on)delete measureState[url];else measureState[url]=false;saveMeasure()}
+function setMeasured(url,on){if(on)delete measureState[url];else measureState[url]=false;saveMeasure();clearMatchCaches()}
 function measureBox(url){return `<input class="measure-toggle" type="checkbox" title="Đo lường so sánh" aria-label="Đo lường so sánh" data-measure="${esc(url)}" ${isMeasured(url)?"checked":""}>`}
 function bindMeasureControls(){
   document.querySelectorAll("[data-measure]").forEach(cb=>{cb.onclick=e=>{e.stopPropagation();setMeasured(cb.dataset.measure,cb.checked);renderAll()}});
@@ -150,8 +155,10 @@ const STOP=new Set([
 const GROUPSET=new Set(["105","r7000","r7100","r7120","r8000","r8100","r9100","r9200","claris","sora","tiagra","ultegra","deore","tourney","altus","acera","alivio","slx","xt","xtr","cues"]);
 const GENERIC_MODEL=new Set(["12","14","16","18","20","22","24","26","27","27.5","29","700","700c","2023","2024","2025","2026"]);
 const MODEL_SKIP=new Set([...STOP,...GROUPSET,"disc","sl","st","rx","limited"]);
+const MODEL_VARIANTS=new Set(["pro","sl","st","rx","limited","lite"]);
 function norm(s){return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/gi,"d").toLowerCase()}
-function tokens(name){return norm(name).split(/[^a-z0-9.]+/).filter(w=>w.length>=2&&!STOP.has(w))}
+function rawTokens(name){return norm(name).split(/[^a-z0-9.]+/).filter(w=>w.length>=2)}
+function tokens(name){return rawTokens(name).filter(w=>!STOP.has(w))}
 function unique(arr){return [...new Set(arr)]}
 function brandInName(normalizedName,brand){
   const hay=" "+normalizedName.replace(/[^a-z0-9]+/g," ")+" ";
@@ -176,12 +183,16 @@ function wheelSize(name){
   return m?m[1]:"";
 }
 function primaryModel(name,brand=""){
-  const ts=productTokens(name,brand).filter(t=>!MODEL_SKIP.has(t));
-  for(let i=0;i<ts.length;i++){
-    const t=ts[i],n=ts[i+1]||"";
-    if(/^[a-z]+\d+(?:\.\d+)?[a-z]*$/.test(t))return t;
-    if(/^[a-z]{1,10}$/.test(t)&&/^\d{1,3}[a-z]?$/.test(n)&&!GENERIC_MODEL.has(n))return t+n;
-    if(/^[a-z]{2,14}$/.test(t)&&/^[a-z]*\d+(?:\.\d+)?[a-z]*$/.test(n)&&!GROUPSET.has(n))return t+n;
+  const bset=new Set(brandTokens(brand));
+  const raw=rawTokens(name).filter(t=>!bset.has(t)&&!GROUPSET.has(t)&&!/^(19|20)\d{2}$/.test(t));
+  const modelWithVariant=(model,idx)=>MODEL_VARIANTS.has(raw[idx+1]||"")?model+(raw[idx+1]||""):model;
+  const ts=raw.filter(t=>!MODEL_SKIP.has(t));
+  for(let i=0;i<raw.length;i++){
+    const t=raw[i],n=raw[i+1]||"";
+    if(MODEL_SKIP.has(t)||GENERIC_MODEL.has(t))continue;
+    if(/^[a-z]+\d+(?:\.\d+)?[a-z]*$/.test(t))return modelWithVariant(t,i);
+    if(/^[a-z]{1,10}$/.test(t)&&/^\d{1,3}[a-z]?$/.test(n)&&!GENERIC_MODEL.has(n))return modelWithVariant(t+n,i+1);
+    if(/^[a-z]{2,14}$/.test(t)&&/^[a-z]*\d+(?:\.\d+)?[a-z]*$/.test(n)&&!GROUPSET.has(n))return modelWithVariant(t+n,i+1);
   }
   const fallback=ts.filter(t=>/[a-z]/.test(t)).slice(0,3).join("");
   return fallback.length>=4?fallback:"";
@@ -190,27 +201,38 @@ function sameKnownBrand(a,b){const ba=detectedBrand(a),bb=detectedBrand(b);retur
 function conflictingKnownBrand(a,b){const ba=detectedBrand(a),bb=detectedBrand(b);return ba&&bb&&ba!==bb}
 function categoryKey(v){return v&&v!=="Khác"?v:""}
 function compatibleCategory(a,b){const ca=categoryKey(a.category),cb=categoryKey(b.category);return !ca||!cb||ca===cb}
-function matchScore(a,b){
-  if(conflictingKnownBrand(a,b)||!compatibleCategory(a,b))return 0;
-  const ba=detectedBrand(a),bb=detectedBrand(b);
-  const ma=primaryModel(a.name,ba),mb=primaryModel(b.name,bb);
-  if(!ma||!mb||ma!==mb)return 0;
-  const ca=categoryKey(a.category),cb=categoryKey(b.category);
-  if(!/\d/.test(ma)&&!(ca&&cb&&ca===cb))return 0;
-  const wa=wheelSize(a.name),wb=wheelSize(b.name);
-  if((wa||wb)&&wa!==wb)return 0;
+function featureFromItem(it){
+  const brand=detectedBrand(it),model=primaryModel(it.name,brand),wheel=wheelSize(it.name),cat=categoryKey(it.category);
+  return {brand,model,wheel,cat};
+}
+function itemFeature(url,it){
+  if(featureCache[url])return featureCache[url];
+  return featureCache[url]=featureFromItem(it);
+}
+function matchScoreFeatures(a,b){
+  if(a.brand&&b.brand&&a.brand!==b.brand)return 0;
+  if(a.cat&&b.cat&&a.cat!==b.cat)return 0;
+  if(!a.model||!b.model||a.model!==b.model)return 0;
+  if(!/\d/.test(a.model)&&!(a.cat&&b.cat&&a.cat===b.cat))return 0;
+  if((a.wheel||b.wheel)&&a.wheel!==b.wheel)return 0;
   let score=20;
-  if(ba&&bb)score+=8;
-  if(wa&&wb)score+=6;
-  if(categoryKey(a.category)&&categoryKey(b.category))score+=2;
+  if(a.brand&&b.brand)score+=8;
+  if(a.wheel&&b.wheel)score+=6;
+  if(a.cat&&b.cat)score+=2;
   return score;
 }
+function matchScore(a,b){return matchScoreFeatures(featureFromItem(a),featureFromItem(b))}
 function matchesFor(url){
   const it=hist.items[url];if(!it||!isMeasured(url))return[];
-  return Object.entries(hist.items)
-    .filter(([u,o])=>u!==url&&o.me!==it.me&&isActive(o)&&isMeasured(u))
-    .map(([u,o])=>({url:u,it:o,score:matchScore(it,o)}))
-    .filter(x=>x.score>=7).sort((a,b)=>b.score-a.score).slice(0,6);
+  if(matchCache[url])return matchCache[url];
+  const base=itemFeature(url,it);
+  const rows=[];
+  Object.entries(hist.items).forEach(([u,o])=>{
+    if(u===url||o.me===it.me||!isActive(o)||!isMeasured(u))return;
+    const score=matchScoreFeatures(base,itemFeature(u,o));
+    if(score>=7)rows.push({url:u,it:o,score});
+  });
+  return matchCache[url]=rows.sort((a,b)=>b.score-a.score).slice(0,6);
 }
 function itemList(){
   return Object.entries(hist.items).map(([url,it])=>({url,...it}))
@@ -315,7 +337,7 @@ function renderTable(){
       rows.map(r=>`<tr data-u="${esc(r.u)}" class="${r.u===selected?"sel":""}">
         <td class="pn" title="${esc(r.it.name)}"><b>${esc(r.it.name)}</b></td>
         <td class="price-col"><span class="price me">${fmt(r.myP)}</span></td>
-        <td><span class="price">${fmt(r.bp)}</span><br><span class="hint">${esc(r.bt.it.seller)}</span></td>
+        <td><span class="price">${fmt(r.bp)}</span><br><a class="hint market-link" href="${esc(r.bt.url)}" target="_blank" rel="noopener">${esc(r.bt.it.seller)} ↗</a></td>
         <td>${r.dd<-0.001?`<span class="delta win">Rẻ hơn ${(-r.dd*100).toFixed(1)}%</span>`:r.dd>0.001?`<span class="delta lose">Đắt hơn ${(r.dd*100).toFixed(1)}%</span>`:`<span class="delta even">Ngang giá</span>`}</td>
       </tr>`).join("")}</tbody></table>`
       :'<div class="empty">Chưa tìm thấy sản phẩm nào khớp tên giữa XDGK và đối thủ trong phạm vi lọc này.</div>';
@@ -356,7 +378,7 @@ function renderDetail(){
     const p=m.it.hist[m.it.hist.length-1].p;
     const rc=m.it.me?"#f26522":regionInfo(m.it.region).cc;
     return `<div class="mrow" title="${esc(m.it.name)}"><span style="width:8px;height:8px;border-radius:50%;background:${rc};border-radius:50%"></span>
-      <span class="nm">${esc(m.it.name)} <span class="hint">· ${esc(m.it.seller)}</span></span>
+      <a class="nm" href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.it.name)} <span class="hint">· ${esc(m.it.seller)} ↗</span></a>
       <span class="price">${fmt(p)}</span></div>`;
   }).join("")+"</div>":"<p class='hint' style='margin-top:6px'>Chưa có sản phẩm khớp đủ chắc ở web khác.</p>");
   bindMeasureControls();
@@ -406,6 +428,7 @@ fetch(new URL("gia-lich-su.json?t="+Date.now(), window.location.href),{cache:"no
   .then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
   .then(d=>{
     hist={runs:Array.isArray(d.runs)?d.runs:[],items:d.items&&typeof d.items==="object"?d.items:{}};
+    clearMatchCaches();
     renderAll();
   })
   .catch(err=>{
