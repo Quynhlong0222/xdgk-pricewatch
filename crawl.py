@@ -17,6 +17,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import unicodedata
 from html.parser import HTMLParser
 
 DEFAULT_SOURCES = [
@@ -130,10 +131,15 @@ def price_from_value(text):
     price = int(m.group(1))
     return price if 100000 <= price <= 200000000 else None
 
+def text_key(s):
+    s = (s or "").lower().replace("đ", "d")
+    s = unicodedata.normalize("NFD", s)
+    return "".join(c for c in s if unicodedata.category(c) != "Mn")
+
 def infer_brand(name):
-    plain = (name or "").lower()
+    plain = text_key(name)
     for brand in sorted(BRANDS, key=len, reverse=True):
-        if brand.lower() in plain:
+        if text_key(brand) in plain:
             return brand
     return ""
 

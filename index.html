@@ -15,8 +15,9 @@
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13.5px;line-height:1.45;padding:16px}
   .wrap{max-width:1240px;margin:0 auto}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(16,24,40,.06);min-width:0}
   h2{font-size:13.5px;color:var(--primary);margin-bottom:10px}
+  #dTitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
   .hint{font-weight:400;font-size:11.5px;color:var(--muted)}
   header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0f3d68,#1b6fb8);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
@@ -35,15 +36,22 @@
   input,select,.btn{border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:12.5px;font-family:inherit;background:#fff;color:var(--text)}
   .btn{cursor:pointer;font-weight:700;background:var(--primary);border-color:var(--primary);color:#fff}
   .btn:disabled{cursor:not-allowed;opacity:.55}
-  .main{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
-  @media(max-width:900px){.main{grid-template-columns:1fr}}
-  table{width:100%;border-collapse:collapse}
-  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1.5px solid var(--border);white-space:nowrap}
-  td{padding:8px;border-bottom:1px solid #eef2f7;vertical-align:middle}
+  .main{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(340px,.95fr);gap:14px;align-items:start}
+  .detail-card{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+  #tblWrap{min-width:0;overflow:hidden}
+  @media(max-width:900px){.main{grid-template-columns:1fr}.detail-card{position:static;max-height:none}}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1.5px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  td{padding:8px;border-bottom:1px solid #eef2f7;vertical-align:middle;min-width:0;overflow:hidden}
+  th.measure-cell,td.measure-cell{width:44px}
+  th.price-col,td.price-col{width:118px;text-align:right}
+  th.web-col,td.web-col{width:138px}
+  th.change-col,td.change-col{width:122px}
   tbody tr{cursor:pointer}
   tbody tr:hover{background:#f8fafc}
   tbody tr.sel{background:#eff6ff}
-  .pn b{display:block;font-size:12.5px}
+  .pn b{display:-webkit-box;font-size:12.5px;line-height:1.35;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+  .pn .hint{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .price{font-weight:700;white-space:nowrap}
   .price.me{color:var(--accent)}
   .chg{font-weight:700;font-size:12px;white-space:nowrap}
@@ -57,10 +65,12 @@
   .measure-toggle{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
   tbody tr.skip{opacity:.55}
   .measure-line{display:inline-flex;align-items:center;gap:6px;margin-right:8px;color:var(--muted);font-size:11.5px}
-  .chart-box{height:200px;position:relative;margin-bottom:8px}
-  .mrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed #eef2f7;font-size:12px}
-  .mrow:last-child{border:0}
-  .mrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chart-box{height:190px;position:relative;margin-bottom:8px}
+  .match-list{max-height:300px;overflow:auto;border-top:1px solid #eef2f7}
+  .mrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dashed #eef2f7;font-size:12px;min-width:0}
+  .mrow:last-child{border-bottom:0}
+  .mrow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mrow .price{text-align:right}
   a{color:var(--primary)}
   .empty{color:var(--muted);text-align:center;padding:30px 10px}
   footer{text-align:center;color:var(--muted);font-size:11.5px;padding:8px}
@@ -101,8 +111,8 @@
 </div>
 
 <div class="main">
-  <div class="card"><div id="tblWrap"><div class="empty">Đang tải...</div></div></div>
-  <div class="card">
+  <div class="card list-card"><div id="tblWrap"><div class="empty">Đang tải...</div></div></div>
+  <div class="card detail-card">
     <h2 id="dTitle">Chi tiết & lịch sử giá</h2>
     <p class="hint" id="dSub" style="margin:-6px 0 8px">Bấm vào 1 dòng để xem.</p>
     <div class="chart-box"><canvas id="chart"></canvas></div>
@@ -119,7 +129,7 @@ const $=id=>document.getElementById(id);
 const fmt=v=>v.toLocaleString("vi-VN")+"đ";
 const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const isActive=it=>it&&it.active!==false&&Array.isArray(it.hist)&&it.hist.length;
-const brandKey=s=>(s||"").toLowerCase();
+const brandKey=s=>norm(s);
 const regionInfo=r=>REGION[r]||{n:r||"Khác",cc:"#64748b"};
 const MEASURE_KEY="xdgk_measure_state";
 let measureState={};
@@ -132,35 +142,68 @@ function bindMeasureControls(){
   document.querySelectorAll("[data-measure]").forEach(cb=>{cb.onclick=e=>{e.stopPropagation();setMeasured(cb.dataset.measure,cb.checked);renderAll()}});
 }
 
+const BRANDS=["Giant","Sava","Java","Trinx","Twitter","Hector","Califa","Calli","Fornix","Papylus","Miamor","Jazz Bear","Thống Nhất","Foxy","Levi","Azi","Action","Nijia","Phoenix","Kawamura","Magicbros","Makelen","Bianchi","Kespor","Fortina","Chevaux","California","Galaxy","Life","Nesto","Merida","Louis Garneau","Maruishi","DTFLY","Inveter","Dahon","ADO","Raptor","RoyalBaby","Youth"];
 const STOP=new Set([
-  "xe","dap","the","thao","hang","sale","chinh","inch","banh","khung","nhom","mau","tre","em","thanh","pho","dia","hinh","dua","mini","gap","nu","be","gai","trai","touring","mtb","city",
-  "shimano","sram","speed","toc","phanh","dau","co","cang","yen","lop","sam","size","new","pro","cao","cap","gia","re","bao","hanh","nhap","khau","khuyen","mai","tra","gop","carbon","aluminum","hop","kim"
+  "xe","dap","the","thao","hang","sale","chinh","inch","inches","banh","khung","nhom","mau","tre","em","thanh","pho","dia","hinh","dua","mini","gap","nu","be","gai","trai","touring","mtb","city","road","duong","truong","pho","phanh","xanh","den","do","trang","ghi","kem","hong","vang","bac","xam",
+  "shimano","sram","speed","toc","dau","co","cang","yen","lop","sam","size","new","pro","cao","cap","gia","re","bao","hanh","nhap","khau","khuyen","mai","tra","gop","carbon","aluminum","hop","kim","full","series","japan","via","uci","toray","tem","san","pham"
 ]);
-const GENERIC_MODEL=new Set(["16","18","20","22","24","26","27","27.5","29","700","700c","105","2024","2025","2026"]);
-function tokens(name){
-  return (name||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/gi,"d").toLowerCase()
-    .split(/[^a-z0-9.]+/).filter(w=>w.length>=2&&!STOP.has(w));
-}
+const GROUPSET=new Set(["105","r7000","r7100","r7120","r8000","r8100","r9100","r9200","claris","sora","tiagra","ultegra","deore","tourney","altus","acera","alivio","slx","xt","xtr","cues"]);
+const GENERIC_MODEL=new Set(["12","14","16","18","20","22","24","26","27","27.5","29","700","700c","2023","2024","2025","2026"]);
+const MODEL_SKIP=new Set([...STOP,...GROUPSET,"disc","sl","st","rx","limited"]);
+function norm(s){return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/gi,"d").toLowerCase()}
+function tokens(name){return norm(name).split(/[^a-z0-9.]+/).filter(w=>w.length>=2&&!STOP.has(w))}
 function unique(arr){return [...new Set(arr)]}
-function modelTokens(name){return unique(tokens(name).filter(t=>/[a-z]/.test(t)&&/\d/.test(t)&&!GENERIC_MODEL.has(t)))}
-function numberTokens(name){return unique(tokens(name).filter(t=>/^\d{2,4}(?:\.\d)?$/.test(t)&&!GENERIC_MODEL.has(t)))}
-function sameKnownBrand(a,b){return a.brand&&b.brand&&brandKey(a.brand)===brandKey(b.brand)}
-function conflictingKnownBrand(a,b){return a.brand&&b.brand&&brandKey(a.brand)!==brandKey(b.brand)}
+function brandInName(normalizedName,brand){
+  const hay=" "+normalizedName.replace(/[^a-z0-9]+/g," ")+" ";
+  const needle=" "+brandKey(brand).replace(/[^a-z0-9]+/g," ").trim()+" ";
+  return needle.trim()?hay.includes(needle):false;
+}
+function detectedBrand(it){
+  if(it.brand)return brandKey(it.brand);
+  const n=norm(it.name);
+  const hit=BRANDS.slice().sort((a,b)=>b.length-a.length).find(b=>brandInName(n,b));
+  return hit?brandKey(hit):"";
+}
+function brandTokens(brand){return brand?brand.split(/[^a-z0-9.]+/).filter(Boolean):[]}
+function productTokens(name,brand=""){
+  const bset=new Set(brandTokens(brand));
+  return tokens(name).filter(t=>!bset.has(t)&&!GROUPSET.has(t)&&!/^(19|20)\d{2}$/.test(t));
+}
+function wheelSize(name){
+  const n=norm(name).replace(/700\s*c/g,"700c");
+  if(/\b700c\b/.test(n))return "700c";
+  const m=n.match(/(?:banh|wheel|size)?\s*(12|14|16|18|20|22|24|26|27\.5|29)\s*(?:inch|inches|in|["”])/);
+  return m?m[1]:"";
+}
+function primaryModel(name,brand=""){
+  const ts=productTokens(name,brand).filter(t=>!MODEL_SKIP.has(t));
+  for(let i=0;i<ts.length;i++){
+    const t=ts[i],n=ts[i+1]||"";
+    if(/^[a-z]+\d+(?:\.\d+)?[a-z]*$/.test(t))return t;
+    if(/^[a-z]{1,10}$/.test(t)&&/^\d{1,3}[a-z]?$/.test(n)&&!GENERIC_MODEL.has(n))return t+n;
+    if(/^[a-z]{2,14}$/.test(t)&&/^[a-z]*\d+(?:\.\d+)?[a-z]*$/.test(n)&&!GROUPSET.has(n))return t+n;
+  }
+  const fallback=ts.filter(t=>/[a-z]/.test(t)).slice(0,3).join("");
+  return fallback.length>=4?fallback:"";
+}
+function sameKnownBrand(a,b){const ba=detectedBrand(a),bb=detectedBrand(b);return ba&&bb&&ba===bb}
+function conflictingKnownBrand(a,b){const ba=detectedBrand(a),bb=detectedBrand(b);return ba&&bb&&ba!==bb}
 function categoryKey(v){return v&&v!=="Khác"?v:""}
 function compatibleCategory(a,b){const ca=categoryKey(a.category),cb=categoryKey(b.category);return !ca||!cb||ca===cb}
 function matchScore(a,b){
   if(conflictingKnownBrand(a,b)||!compatibleCategory(a,b))return 0;
-  const ta=tokens(a.name),tb=new Set(tokens(b.name));
-  const shared=unique(ta.filter(t=>tb.has(t)));
-  const sharedModel=modelTokens(a.name).filter(t=>modelTokens(b.name).includes(t));
-  const sharedNumber=numberTokens(a.name).filter(t=>numberTokens(b.name).includes(t));
-  const strongShared=shared.filter(t=>/[a-z]/.test(t)&&!GENERIC_MODEL.has(t));
-  const brandOk=sameKnownBrand(a,b);
-  if(brandOk&&sharedModel.length)return 12+sharedModel.length*3+strongShared.length;
-  if(brandOk&&strongShared.length>=2&&sharedNumber.length)return 10+strongShared.length+sharedNumber.length;
-  if(brandOk&&strongShared.length>=3)return 8+strongShared.length;
-  if((!a.brand||!b.brand)&&sharedModel.length&&strongShared.length>=2)return 7+sharedModel.length+strongShared.length;
-  return 0;
+  const ba=detectedBrand(a),bb=detectedBrand(b);
+  const ma=primaryModel(a.name,ba),mb=primaryModel(b.name,bb);
+  if(!ma||!mb||ma!==mb)return 0;
+  const ca=categoryKey(a.category),cb=categoryKey(b.category);
+  if(!/\d/.test(ma)&&!(ca&&cb&&ca===cb))return 0;
+  const wa=wheelSize(a.name),wb=wheelSize(b.name);
+  if((wa||wb)&&wa!==wb)return 0;
+  let score=20;
+  if(ba&&bb)score+=8;
+  if(wa&&wb)score+=6;
+  if(categoryKey(a.category)&&categoryKey(b.category))score+=2;
+  return score;
 }
 function matchesFor(url){
   const it=hist.items[url];if(!it||!isMeasured(url))return[];
@@ -244,7 +287,7 @@ function renderTable(){
       }).join("")}</tbody></table>`:'<div class="empty">Chưa có dữ liệu thương hiệu trong phạm vi lọc này.</div>';
   }else if(view==="market"){
     const list=itemList().sort((a,b)=>{const da=delta(a),db=delta(b);return Math.abs(db?db.pct:0)-Math.abs(da?da.pct:0)||a.name.localeCompare(b.name)});
-    w.innerHTML=`<table><thead><tr><th class="measure-cell">Đo</th><th>Sản phẩm</th><th>Web</th><th>Giá hiện tại</th><th>Δ so lần trước</th></tr></thead><tbody>${
+    w.innerHTML=`<table><thead><tr><th class="measure-cell">Đo</th><th>Sản phẩm</th><th class="web-col">Web</th><th class="price-col">Giá hiện tại</th><th class="change-col">Δ so lần trước</th></tr></thead><tbody>${
       list.map(it=>{
         const d=delta(it),p=it.hist[it.hist.length-1].p;
         const dc=d?(d.v>0?`<span class="chg up">▲ ${fmt(d.v)}</span>`:`<span class="chg down">▼ ${fmt(-d.v)}</span>`):`<span class="chg flat">—</span>`;
@@ -252,9 +295,9 @@ function renderTable(){
         const meta=[it.brand,it.category].filter(Boolean).join(" · ");
         return `<tr data-u="${esc(it.url)}" class="${it.url===selected?"sel":""} ${isMeasured(it.url)?"":"skip"}">
           <td class="measure-cell">${measureBox(it.url)}</td>
-          <td class="pn"><b>${esc(it.name)}</b>${meta?`<span class="hint">${esc(meta)}</span>`:""}</td>
-          <td><span class="rtag" style="color:${rc};background:${rc}18">${esc(it.seller)}</span></td>
-          <td><span class="price ${it.me?"me":""}">${fmt(p)}</span></td><td>${dc}</td></tr>`;
+          <td class="pn" title="${esc(it.name)}"><b>${esc(it.name)}</b>${meta?`<span class="hint">${esc(meta)}</span>`:""}</td>
+          <td class="web-col"><span class="rtag" style="color:${rc};background:${rc}18">${esc(it.seller)}</span></td>
+          <td class="price-col"><span class="price ${it.me?"me":""}">${fmt(p)}</span></td><td class="change-col">${dc}</td></tr>`;
       }).join("")}</tbody></table>`;
   }else{
     const rows=Object.entries(hist.items).filter(([u,it])=>it.me&&isActive(it)&&isMeasured(u)).map(([u,it])=>{
@@ -268,10 +311,10 @@ function renderTable(){
       .filter(r=>brand==="all"||brandKey(r.it.brand)===brand)
       .filter(r=>!q||[r.it.name,r.it.brand,r.it.category].filter(Boolean).join(" ").toLowerCase().includes(q))
       .sort((a,b)=>b.dd-a.dd);
-    w.innerHTML=rows.length?`<table><thead><tr><th>SP của XDGK</th><th>Giá XDGK</th><th>Rẻ nhất thị trường</th><th>Chênh lệch</th></tr></thead><tbody>${
+    w.innerHTML=rows.length?`<table><thead><tr><th>SP của XDGK</th><th class="price-col">Giá XDGK</th><th>Rẻ nhất thị trường</th><th>Chênh lệch</th></tr></thead><tbody>${
       rows.map(r=>`<tr data-u="${esc(r.u)}" class="${r.u===selected?"sel":""}">
-        <td class="pn"><b>${esc(r.it.name)}</b></td>
-        <td><span class="price me">${fmt(r.myP)}</span></td>
+        <td class="pn" title="${esc(r.it.name)}"><b>${esc(r.it.name)}</b></td>
+        <td class="price-col"><span class="price me">${fmt(r.myP)}</span></td>
         <td><span class="price">${fmt(r.bp)}</span><br><span class="hint">${esc(r.bt.it.seller)}</span></td>
         <td>${r.dd<-0.001?`<span class="delta win">Rẻ hơn ${(-r.dd*100).toFixed(1)}%</span>`:r.dd>0.001?`<span class="delta lose">Đắt hơn ${(r.dd*100).toFixed(1)}%</span>`:`<span class="delta even">Ngang giá</span>`}</td>
       </tr>`).join("")}</tbody></table>`
@@ -309,13 +352,13 @@ function renderDetail(){
         scales:{y:{ticks:{callback:v=>(v/1e6).toFixed(1)+"tr"}},x:{grid:{display:false}}}}});
   }
   const measureNote=isMeasured(selected)?"":"<p class='hint' style='margin:6px 0'>Sản phẩm này đang được loại khỏi phần so sánh.</p>";
-  $("dMatches").innerHTML=chartNote+measureNote+(ms.length?"<p class='hint' style='margin:6px 0'>Sản phẩm khớp theo thương hiệu/model (tự động):</p>"+ms.map(m=>{
+  $("dMatches").innerHTML=chartNote+measureNote+(ms.length?"<p class='hint' style='margin:6px 0'>Sản phẩm khớp theo thương hiệu + model + inch:</p><div class='match-list'>"+ms.map(m=>{
     const p=m.it.hist[m.it.hist.length-1].p;
     const rc=m.it.me?"#f26522":regionInfo(m.it.region).cc;
-    return `<div class="mrow"><span style="width:8px;height:8px;border-radius:50%;background:${rc};flex:0 0 auto"></span>
+    return `<div class="mrow" title="${esc(m.it.name)}"><span style="width:8px;height:8px;border-radius:50%;background:${rc};border-radius:50%"></span>
       <span class="nm">${esc(m.it.name)} <span class="hint">· ${esc(m.it.seller)}</span></span>
       <span class="price">${fmt(p)}</span></div>`;
-  }).join(""):"<p class='hint' style='margin-top:6px'>Chưa có sản phẩm khớp đủ chắc ở web khác.</p>");
+  }).join("")+"</div>":"<p class='hint' style='margin-top:6px'>Chưa có sản phẩm khớp đủ chắc ở web khác.</p>");
   bindMeasureControls();
 }
 function renderAll(){renderBrandFilter();renderKpis();renderTable();renderDetail()}
