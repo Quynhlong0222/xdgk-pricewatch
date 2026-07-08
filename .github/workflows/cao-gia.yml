@@ -15,6 +15,7 @@ concurrency:
 jobs:
   crawl:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Lay ma nguon
         uses: actions/checkout@v4
@@ -28,6 +29,8 @@ jobs:
         env:
           MAX_XDGK_PRODUCTS: "1200"
           XDGK_CRAWL_WORKERS: "8"
+          COMPETITOR_CRAWL_WORKERS: "6"
+          SITEMAP_TIMEOUT: "20"
         run: python -u crawl.py
 
       - name: Luu ket qua

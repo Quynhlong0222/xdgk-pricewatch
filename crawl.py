@@ -3,8 +3,8 @@
 """Cao gia xe dap cho XDGK PriceWatch.
 
 XDGK la danh muc goc: lay URL san pham tu product sitemap, mo tung trang san
-pham de lay gia + ton kho. Cac doi thu hien van cao trang danh sach de giu
-workflow nhe, sau nay co the them sitemap rieng tung nguon.
+pham de lay gia + ton kho. Cac doi thu uu tien product sitemap va doc tung
+trang san pham de tranh lay nham ten/gia tu trang danh sach.
 """
 import concurrent.futures
 import gzip
@@ -12,6 +12,7 @@ import html as html_lib
 import json
 import os
 import re
+import ssl
 import sys
 import time
 import urllib.parse
@@ -28,13 +29,17 @@ DEFAULT_SOURCES = [
 HIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gia-lich-su.json")
 SOURCES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources.json")
 UA = {
-    "User-Agent":"Mozilla/5.0 (compatible; XDGK-PriceWatch/1.0)",
+    "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
     "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Encoding":"gzip",
+    "Accept-Language":"vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
 }
 PRICE_RE = re.compile(r"(\d{1,3}(?:[.,]\d{3})+)\s*(?:₫|đ|VND|&#8363;)", re.I)
-LINK_RE  = re.compile(r"/(?:products|product|san-pham)/[^\"'#?\s]+")
+LINK_RE  = re.compile(r"/(?:products|product|san-pham|p|shop)/[^\"'#?\s<>]+|/xe-dap(?:/|-)[^\"'#?\s<>]+")
 LOC_RE = re.compile(r"<loc>\s*([^<]+?)\s*</loc>", re.I)
+COMMON_SITEMAPS = ("/sitemap.xml", "/sitemap_index.xml", "/product-sitemap.xml", "/sitemap_products_1.xml", "/sitemap-product.xml", "/sitemap-products.xml")
+DEFAULT_PRODUCT_PATHS = ("/products/", "/product/", "/san-pham/", "/p/", "/shop/", "/xe-dap/")
+DEFAULT_URL_INCLUDE = r"(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)"
 
 BRANDS = [
     "Giant","Sava","Java","Trinx","Twitter","Hector","Califa","Calli","Fornix",
@@ -57,12 +62,21 @@ def load_sources():
         print(f"WARN sources.json: {e}", file=sys.stderr)
     return DEFAULT_SOURCES
 
-def fetch(url, timeout=30):
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as res:
+def read_url(req, timeout, context=None):
+    with urllib.request.urlopen(req, timeout=timeout, context=context) as res:
         raw = res.read()
         charset = res.headers.get_content_charset() or "utf-8"
         encoding = (res.headers.get("Content-Encoding") or "").lower()
+    return raw, charset, encoding
+
+def fetch(url, timeout=30):
+    req = urllib.request.Request(url, headers=UA)
+    try:
+        raw, charset, encoding = read_url(req, timeout)
+    except Exception as e:
+        if "CERTIFICATE_VERIFY_FAILED" not in str(e):
+            raise
+        raw, charset, encoding = read_url(req, timeout, ssl._create_unverified_context())
     if encoding == "gzip" or raw[:2] == b"\x1f\x8b":
         raw = gzip.decompress(raw)
     return raw.decode(charset, errors="replace")
@@ -80,6 +94,12 @@ def normalize_url(url):
     url = url.split("#")[0].split("?")[0].rstrip("/")
     return url
 
+def name_from_url(url):
+    slug = urllib.parse.urlparse(url or "").path.rstrip("/").split("/")[-1]
+    slug = re.sub(r"\.html?$", "", slug, flags=re.I)
+    slug = re.sub(r"^\d+[-_]", "", slug)
+    return clean_text(re.sub(r"[-_]+", " ", slug)).title()
+
 def meta_content(page, key, attr="name"):
     pat = rf'<meta[^>]+{attr}=["\']{re.escape(key)}["\'][^>]+content=["\']([^"\']*)["\']'
     m = re.search(pat, page, re.I)
@@ -92,6 +112,23 @@ def price_from_text(text):
     prices = [num(x) for x in PRICE_RE.findall(text or "")]
     prices = [p for p in prices if 100000 <= p <= 200000000]
     return min(prices) if prices else None
+
+def first_price_from_text(text):
+    for raw in PRICE_RE.findall(text or ""):
+        price = num(raw)
+        if 100000 <= price <= 200000000:
+            return price
+    return None
+
+def price_from_value(text):
+    price = price_from_text(text)
+    if price:
+        return price
+    m = re.search(r"(?<!\d)(\d{6,9})(?!\d)", str(text or ""))
+    if not m:
+        return None
+    price = int(m.group(1))
+    return price if 100000 <= price <= 200000000 else None
 
 def infer_brand(name):
     plain = (name or "").lower()
@@ -117,6 +154,214 @@ def infer_category(name):
     if "nữ" in n or "nu " in n:
         return "Xe nữ"
     return "Khác"
+
+ACCESSORY_WORDS = (
+    "đèn", "den ", "chuông", "chuong", "bơm", "bom", "găng", "gang", "kính", "kinh",
+    "mũ", "mu ", "nón", "non", "yên", "yen", "đệm", "dem", "túi", "tui", "khóa", "khoa",
+    "pedal", "bàn đạp", "ban dap", "chân chống", "chan chong", "bình nước", "binh nuoc",
+    "còi", "coi", "baga", "gác ba", "gac ba", "lốp", "lop", "săm", "sam", "ruột", "ruot",
+    "ghi đông", "ghi dong", "tay nắm", "tay nam", "cọc yên", "coc yen", "dây", "day ",
+    "nhớt", "nhot", "lube", "lubricant", "sáp", "sap", "xích", "xich", "sên", "sen",
+    "chắn bùn", "chan bun", "fender", "bộ dụng cụ", "bo dung cu", "tool", "pump", "kit", "vá xe", "va xe"
+)
+BIKE_WORDS = (
+    "xe đạp", "xe dap", "road", "mtb", "touring", "city", "fixed", "bmx",
+    "địa hình", "dia hinh", "xe đua", "xe dua", "xe điện", "xe dien", "xe máy điện", "xe may dien"
+)
+
+def is_bike_product(name, url=""):
+    text = f"{name or ''} {url or ''}".lower()
+    if any(w in text for w in ACCESSORY_WORDS):
+        return False
+    return any(w in text for w in BIKE_WORDS) or "/xe-" in text or "/shop/xe-dap-" in text
+
+def jsonld_blocks(page):
+    for raw in re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', page, re.I|re.S):
+        raw = html_lib.unescape(raw.strip())
+        try:
+            yield json.loads(raw)
+        except Exception:
+            continue
+
+def walk_json(obj):
+    if isinstance(obj, dict):
+        yield obj
+        for v in obj.values():
+            yield from walk_json(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from walk_json(v)
+
+def first_json_product(page):
+    for block in jsonld_blocks(page):
+        for node in walk_json(block):
+            typ = node.get("@type") if isinstance(node, dict) else None
+            types = typ if isinstance(typ, list) else [typ]
+            if "Product" in types:
+                return node
+    return {}
+
+def generic_price(page, product=None):
+    for key, attr in (("og:price:amount","property"),("product:price:amount","property"),("twitter:data1","name")):
+        price = price_from_value(meta_content(page, key, attr))
+        if price: return price
+    m = re.search(r'itemprop=["\']price["\'][^>]+content=["\']([^"\']+)', page, re.I)
+    if m:
+        price = price_from_value(m.group(1))
+        if price: return price
+    offers = (product or {}).get("offers") if isinstance(product, dict) else None
+    if isinstance(offers, list): offers = offers[0] if offers else None
+    if isinstance(offers, dict):
+        price = price_from_value(str(offers.get("price") or offers.get("lowPrice") or ""))
+        if price: return price
+    return first_price_from_text(page[:60000]) or price_from_text(page[:120000])
+
+def parse_generic_product(url, src):
+    page = fetch(url, timeout=45)
+    product = first_json_product(page)
+    raw_name = product.get("name") if isinstance(product, dict) else ""
+    name = clean_text(raw_name) or meta_content(page, "og:title", "property") or meta_content(page, "twitter:title")
+    name = re.sub(r"\s+[-|]\s+(Xe đạp thế giới|Xe đạp đức liên.*|Hanoibike|Xedap\.vn).*$", "", name, flags=re.I).strip()
+    name = re.sub(r"\s*(?:xedapchauau\.vn|xedap\.vn)$", "", name, flags=re.I).strip()
+    if re.search(r"^(cửa hàng xe đạp|cua hang xe dap)", name, re.I) or re.search(r"^(xe điện|xe dien|xe đạp|xe dap)$", name, re.I):
+        name = name_from_url(url)
+    if not name or not is_bike_product(name, url):
+        return None
+    price = generic_price(page, product)
+    if not price:
+        return None
+    offers = product.get("offers") if isinstance(product, dict) else None
+    if isinstance(offers, list): offers = offers[0] if offers else None
+    availability = ""
+    if isinstance(offers, dict): availability = str(offers.get("availability") or "")
+    availability += " " + meta_content(page, "product:availability", "property")
+    if re.search(r"outofstock|out of stock|hết hàng|het hang", availability, re.I):
+        return None
+    brand = infer_brand(name)
+    brand_obj = product.get("brand") if isinstance(product, dict) else None
+    if not brand and isinstance(brand_obj, dict): brand = clean_text(brand_obj.get("name") or "")
+    if brand and brand.lower() in (src["name"].lower(), "khác", "khac", "xe đạp thế giới", "xe dap the gioi"):
+        brand = infer_brand(name)
+    return {"url": normalize_url(url), "name": name, "price": price, "brand": brand,
+            "category": infer_category(name), "stock": "instock", "active": True}
+
+def source_origin(src):
+    raw = src.get("base") or src.get("url") or ""
+    if raw and not re.match(r"https?://", raw):
+        raw = "https://" + raw
+    parsed = urllib.parse.urlparse(raw)
+    return f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else raw.rstrip("/")
+
+def source_sitemap_roots(src):
+    if src.get("use_sitemap") is False:
+        return []
+    roots=[]
+    def add(url):
+        if url and url not in roots:
+            roots.append(url)
+    add(src.get("sitemap"))
+    origin = source_origin(src)
+    if origin:
+        try:
+            robots = fetch(urllib.parse.urljoin(origin + "/", "robots.txt"), timeout=20)
+            for line in robots.splitlines():
+                if line.lower().startswith("sitemap:"):
+                    add(line.split(":", 1)[1].strip())
+        except Exception as e:
+            if os.getenv("VERBOSE_SITEMAP"):
+                print(f"WARN robots {origin}: {e}", file=sys.stderr)
+        for path in COMMON_SITEMAPS:
+            add(urllib.parse.urljoin(origin + "/", path.lstrip("/")))
+    return roots
+
+def source_product_paths(src):
+    paths = src.get("product_paths") or src.get("product_path") or DEFAULT_PRODUCT_PATHS
+    if isinstance(paths, str):
+        paths = [paths]
+    return [p.lower() for p in paths if p]
+
+def source_url_include(src):
+    return re.compile(src.get("url_include") or DEFAULT_URL_INCLUDE, re.I)
+
+def candidate_product_url(loc, paths, include):
+    path = urllib.parse.urlparse(loc).path.lower()
+    category_roots = {"/xe-dap", "/shop/xe-dap", "/shop/xe-dien", "/san-pham", "/products", "/product"}
+    slug = path.rstrip("/").split("/")[-1]
+    if path.rstrip("/") in category_roots or slug in {"xe-dap", "xe-dien", "san-pham", "products", "product", "shop"}:
+        return False
+    return any(p in path for p in paths) and include.search(loc)
+
+def discover_sitemap_urls(src):
+    roots = source_sitemap_roots(src)
+    seen_maps=set(); urls=[]
+    paths = source_product_paths(src)
+    include = source_url_include(src)
+    sitemap_timeout = int(os.getenv("SITEMAP_TIMEOUT", "25"))
+    while roots:
+        sm = roots.pop(0)
+        if not sm or sm in seen_maps: continue
+        seen_maps.add(sm)
+        try:
+            locs = sitemap_locs(fetch(sm, timeout=sitemap_timeout))
+        except Exception as e:
+            if os.getenv("VERBOSE_SITEMAP"):
+                print(f"WARN sitemap {sm}: {e}", file=sys.stderr)
+            continue
+        for loc in locs:
+            path = urllib.parse.urlparse(loc).path.lower()
+            if re.search(r"\.xml(?:\.gz)?$", path):
+                roots.append(loc)
+            elif candidate_product_url(loc, paths, include):
+                urls.append(normalize_url(loc))
+    out=[]; seen=set()
+    for u in urls:
+        if u and u not in seen:
+            seen.add(u); out.append(u)
+    return out[:int(src.get("limit") or os.getenv("MAX_COMPETITOR_PRODUCTS", "300"))]
+
+def listing_product_urls(page, src):
+    base = src.get("base") or src.get("url")
+    include = source_url_include(src)
+    urls=[]; seen=set()
+    for m in re.finditer(r'href=["\']([^"\']+)["\']', page or "", re.I):
+        href = html_lib.unescape(m.group(1)).strip()
+        if not LINK_RE.search(href):
+            continue
+        url = normalize_url(href if href.startswith("http") else urllib.parse.urljoin(base.rstrip("/") + "/", href))
+        if url in seen or not include.search(url):
+            continue
+        seen.add(url); urls.append(url)
+    return urls[:int(src.get("limit") or os.getenv("MAX_COMPETITOR_PRODUCTS", "300"))]
+
+def crawl_generic_product_urls(src, urls):
+    workers = max(1, min(10, int(os.getenv("COMPETITOR_CRAWL_WORKERS", "5"))))
+    items=[]; errors=0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+        futs={ex.submit(parse_generic_product,u,src):u for u in urls}
+        for i,fut in enumerate(concurrent.futures.as_completed(futs),1):
+            try:
+                it=fut.result()
+                if it: items.append(it)
+            except Exception as e:
+                errors += 1
+                if errors <= 10: print(f"WARN competitor {futs[fut]}: {e}", file=sys.stderr)
+            if i % 100 == 0:
+                print(f"INFO {src['name']}: da xu ly {i}/{len(urls)}, hop le {len(items)}")
+    items.sort(key=lambda x: x["name"].lower())
+    print(f"INFO {src['name']}: bo qua {errors} URL loi")
+    return items
+
+def crawl_product_sitemap(src):
+    urls = discover_sitemap_urls(src)
+    print(f"INFO {src['name']}: tim thay {len(urls)} URL ung vien trong sitemap")
+    if not urls:
+        print(f"WARN {src['name']}: khong thay product sitemap, thu link tu trang danh muc", file=sys.stderr)
+        page = fetch(src["url"], timeout=45)
+        urls = listing_product_urls(page, src)
+        print(f"INFO {src['name']}: tim thay {len(urls)} URL ung vien tu trang danh muc")
+    if urls:
+        return crawl_generic_product_urls(src, urls)
+    return parse_listing(fetch(src["url"], timeout=45), src)
 
 class Prod(HTMLParser):
     """Gom text + link + alt theo tung khoi san pham tren trang danh sach."""
@@ -290,6 +535,8 @@ def main():
         try:
             if src.get("mode")=="xdgk_sitemap":
                 items=crawl_xdgk(src)
+            elif src.get("mode")=="product_sitemap":
+                items=crawl_product_sitemap(src)
             else:
                 items=parse_listing(fetch(src["url"]), src)
             if not items: raise RuntimeError("khong tim thay gia")

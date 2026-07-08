@@ -18,6 +18,11 @@
       "url": "https://hanoibike.net/",
       "base": "https://hanoibike.net",
       "me": false,
+      "mode": "product_sitemap",
+      "sitemap": "https://hanoibike.net/sitemap.xml",
+      "product_path": "/products/",
+      "url_include": "(?:/products/xe-|/products/.*(?:road|mtb|touring|city|fixed|gap))",
+      "limit": 500,
       "enabled": true
     },
     {
@@ -27,6 +32,11 @@
       "url": "https://xedapdanang.vn/",
       "base": "https://xedapdanang.vn",
       "me": false,
+      "mode": "product_sitemap",
+      "sitemap": "https://xedapdanang.vn/sitemap.xml",
+      "product_path": "/san-pham/",
+      "url_include": "/san-pham/xe-",
+      "limit": 300,
       "enabled": true
     },
     {
@@ -36,6 +46,412 @@
       "url": "https://xedapthegioi.vn/",
       "base": "https://xedapthegioi.vn",
       "me": false,
+      "mode": "product_sitemap",
+      "sitemap": "https://xedapthegioi.vn/product-sitemap.xml",
+      "product_path": "/product/",
+      "url_include": "/product/xe-",
+      "limit": 300,
+      "enabled": true
+    },
+    {
+      "id": "xedapvn",
+      "name": "XeDap.vn",
+      "region": "online",
+      "url": "https://xedap.vn/shop/xe-dap",
+      "base": "https://xedap.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "/shop/xe-(?:dap|dien)-",
+      "limit": 160,
+      "enabled": true,
+      "use_sitemap": false
+    },
+    {
+      "id": "xedaphoanggia",
+      "name": "Xe Đạp Hoàng Gia",
+      "region": "online",
+      "url": "https://xedaphoanggia.com/",
+      "base": "https://xedaphoanggia.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 140,
+      "enabled": true
+    },
+    {
+      "id": "store644",
+      "name": "644 Store",
+      "region": "online",
+      "url": "https://644store.vn/",
+      "base": "https://644store.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "dienmayxanh",
+      "name": "Điện Máy Xanh",
+      "region": "online",
+      "url": "https://www.dienmayxanh.com/xe-dap",
+      "base": "https://www.dienmayxanh.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 160,
+      "enabled": true
+    },
+    {
+      "id": "topxedap",
+      "name": "Top Xe Đạp",
+      "region": "online",
+      "url": "https://topxedap.com/",
+      "base": "https://topxedap.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "xedap24h",
+      "name": "Xe Đạp 24H",
+      "region": "online",
+      "url": "https://xedap24h.vn/",
+      "base": "https://xedap24h.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 140,
+      "enabled": true
+    },
+    {
+      "id": "thegioixechobe",
+      "name": "Thế Giới Xe Cho Bé",
+      "region": "online",
+      "url": "https://thegioixechobe.com/",
+      "base": "https://thegioixechobe.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "tiemxetamnhu",
+      "name": "Tiệm Xe Tâm Như",
+      "region": "online",
+      "url": "https://tiemxetamnhu.com/",
+      "base": "https://tiemxetamnhu.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "bike2school",
+      "name": "Bike2School",
+      "region": "online",
+      "url": "https://bike2school.vn/",
+      "base": "https://bike2school.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "thongnhatbikes",
+      "name": "Thống Nhất Bikes",
+      "region": "online",
+      "url": "https://thongnhatbikes.com.vn/",
+      "base": "https://thongnhatbikes.com.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 160,
+      "enabled": true
+    },
+    {
+      "id": "aeoneshop",
+      "name": "Aeoneshop",
+      "region": "online",
+      "url": "https://aeoneshop.com/",
+      "base": "https://aeoneshop.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "thethao365",
+      "name": "Thể Thao 365",
+      "region": "online",
+      "url": "https://thethao365.com.vn/",
+      "base": "https://thethao365.com.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "xuongxetamduc",
+      "name": "Xưởng Xe Tâm Đức",
+      "region": "online",
+      "url": "https://xuongxetamduc.com/",
+      "base": "https://xuongxetamduc.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "xedaptoanthang",
+      "name": "Xe Đạp Toàn Thắng",
+      "region": "online",
+      "url": "https://xedaptoanthang.com/",
+      "base": "https://xedaptoanthang.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "shopxetot",
+      "name": "Shop Xe Tốt",
+      "region": "online",
+      "url": "https://shopxetot.com/",
+      "base": "https://shopxetot.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "decathlon",
+      "name": "Decathlon Việt Nam",
+      "region": "online",
+      "url": "https://www.decathlon.vn/",
+      "base": "https://www.decathlon.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 160,
+      "enabled": true
+    },
+    {
+      "id": "xedapchauau",
+      "name": "Xe Đạp Châu Âu",
+      "region": "online",
+      "url": "http://xedapchauau.vn/",
+      "base": "http://xedapchauau.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "rideplus",
+      "name": "Ride Plus",
+      "region": "online",
+      "url": "https://rideplus.vn/",
+      "base": "https://rideplus.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "xechinhhang",
+      "name": "Xe Chính Hãng",
+      "region": "online",
+      "url": "https://www.xechinhhang.vn/",
+      "base": "https://www.xechinhhang.vn",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
+      "enabled": true
+    },
+    {
+      "id": "xedapthethaovip",
+      "name": "Xe Đạp Thể Thao VIP",
+      "region": "online",
+      "url": "https://xedapthethaovip.com/",
+      "base": "https://xedapthethaovip.com",
+      "me": false,
+      "mode": "product_sitemap",
+      "product_paths": [
+        "/products/",
+        "/product/",
+        "/san-pham/",
+        "/p/",
+        "/shop/",
+        "/xe-dap/"
+      ],
+      "url_include": "(xe-dap|xedap|xe-dien|bike|bicycle|cycle|mtb|road|touring|fixed|bmx|tre-em|kid|kids|giant|sava|java|trinx|twitter|fornix|thong-nhat|btwin|rockrider|triban|van-rysel)",
+      "limit": 120,
       "enabled": true
     }
   ]

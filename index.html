@@ -53,6 +53,10 @@
   .delta.lose{color:var(--red);background:var(--red-bg)}
   .delta.even{color:var(--muted);background:#f1f5f9}
   .rtag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+  .measure-cell{text-align:center;width:44px}
+  .measure-toggle{width:16px;height:16px;accent-color:var(--primary);cursor:pointer}
+  tbody tr.skip{opacity:.55}
+  .measure-line{display:inline-flex;align-items:center;gap:6px;margin-right:8px;color:var(--muted);font-size:11.5px}
   .chart-box{height:200px;position:relative;margin-bottom:8px}
   .mrow{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed #eef2f7;font-size:12px}
   .mrow:last-child{border:0}
@@ -68,7 +72,7 @@
   <div class="logo">XDGK</div>
   <div>
     <h1>PriceWatch — Giá thị trường xe đạp</h1>
-    <p>Xe Đạp Giá Kho vs. đối thủ 3 miền · cập nhật tự động hằng ngày</p>
+    <p>Xe Đạp Giá Kho vs. đối thủ 3 miền & online · cập nhật tự động hằng ngày</p>
   </div>
   <div class="grow"></div>
   <button class="btn" id="runCrawl" type="button">Cào lại ngay</button>
@@ -84,6 +88,7 @@
     <button data-r="bac">Miền Bắc</button>
     <button data-r="trung">Miền Trung</button>
     <button data-r="nam">Miền Nam</button>
+    <button data-r="online">Online</button>
   </div>
   <div class="tabs" id="vtabs">
     <button data-v="market" class="active">Bảng giá thị trường</button>
@@ -104,35 +109,65 @@
     <div id="dMatches"></div>
   </div>
 </div>
-<footer>Dữ liệu cào tự động từ website công khai, chỉ dùng tham khảo nội bộ. Khớp sản phẩm giữa các web là tự động theo tên — cần kiểm tra lại trước khi quyết định giá.</footer>
+<footer>Dữ liệu cào tự động từ website công khai, chỉ dùng tham khảo nội bộ. Khớp sản phẩm giữa các web là tự động theo thương hiệu/model — cần kiểm tra lại trước khi quyết định giá.</footer>
 </div>
 
 <script>
-const REGION={me:{n:"XDGK",cc:"#f26522"},bac:{n:"Miền Bắc",cc:"#2563eb"},trung:{n:"Miền Trung",cc:"#d97706"},nam:{n:"Miền Nam",cc:"#059669"}};
+const REGION={me:{n:"XDGK",cc:"#f26522"},bac:{n:"Miền Bắc",cc:"#2563eb"},trung:{n:"Miền Trung",cc:"#d97706"},nam:{n:"Miền Nam",cc:"#059669"},online:{n:"Online",cc:"#64748b"}};
 let hist={runs:[],items:{}},region="all",view="market",q="",brand="all",selected=null,chart=null;
 const $=id=>document.getElementById(id);
 const fmt=v=>v.toLocaleString("vi-VN")+"đ";
 const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const isActive=it=>it&&it.active!==false&&Array.isArray(it.hist)&&it.hist.length;
 const brandKey=s=>(s||"").toLowerCase();
-
-const STOP=new Set(["xe","dap","the","thao","hang","sale","chinh","inch","banh","khung","nhom","mau","tre","em","thanh","pho","dia","hinh","dua","mini","gap","nu","be","gai","trai","touring","mtb","city"]);
-function tokens(name){
-  return name.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/gi,"d").toLowerCase()
-    .split(/[^a-z0-9]+/).filter(w=>w.length>=2&&!STOP.has(w));
+const regionInfo=r=>REGION[r]||{n:r||"Khác",cc:"#64748b"};
+const MEASURE_KEY="xdgk_measure_state";
+let measureState={};
+try{measureState=JSON.parse(localStorage.getItem(MEASURE_KEY)||"{}")||{}}catch(e){measureState={}}
+const isMeasured=url=>measureState[url]!==false;
+function saveMeasure(){try{localStorage.setItem(MEASURE_KEY,JSON.stringify(measureState))}catch(e){}}
+function setMeasured(url,on){if(on)delete measureState[url];else measureState[url]=false;saveMeasure()}
+function measureBox(url){return `<input class="measure-toggle" type="checkbox" title="Đo lường so sánh" aria-label="Đo lường so sánh" data-measure="${esc(url)}" ${isMeasured(url)?"checked":""}>`}
+function bindMeasureControls(){
+  document.querySelectorAll("[data-measure]").forEach(cb=>{cb.onclick=e=>{e.stopPropagation();setMeasured(cb.dataset.measure,cb.checked);renderAll()}});
 }
+
+const STOP=new Set([
+  "xe","dap","the","thao","hang","sale","chinh","inch","banh","khung","nhom","mau","tre","em","thanh","pho","dia","hinh","dua","mini","gap","nu","be","gai","trai","touring","mtb","city",
+  "shimano","sram","speed","toc","phanh","dau","co","cang","yen","lop","sam","size","new","pro","cao","cap","gia","re","bao","hanh","nhap","khau","khuyen","mai","tra","gop","carbon","aluminum","hop","kim"
+]);
+const GENERIC_MODEL=new Set(["16","18","20","22","24","26","27","27.5","29","700","700c","105","2024","2025","2026"]);
+function tokens(name){
+  return (name||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/đ/gi,"d").toLowerCase()
+    .split(/[^a-z0-9.]+/).filter(w=>w.length>=2&&!STOP.has(w));
+}
+function unique(arr){return [...new Set(arr)]}
+function modelTokens(name){return unique(tokens(name).filter(t=>/[a-z]/.test(t)&&/\d/.test(t)&&!GENERIC_MODEL.has(t)))}
+function numberTokens(name){return unique(tokens(name).filter(t=>/^\d{2,4}(?:\.\d)?$/.test(t)&&!GENERIC_MODEL.has(t)))}
+function sameKnownBrand(a,b){return a.brand&&b.brand&&brandKey(a.brand)===brandKey(b.brand)}
+function conflictingKnownBrand(a,b){return a.brand&&b.brand&&brandKey(a.brand)!==brandKey(b.brand)}
+function categoryKey(v){return v&&v!=="Khác"?v:""}
+function compatibleCategory(a,b){const ca=categoryKey(a.category),cb=categoryKey(b.category);return !ca||!cb||ca===cb}
 function matchScore(a,b){
-  const ta=tokens(a),tb=new Set(tokens(b));
-  const shared=ta.filter(t=>tb.has(t));
-  const hasDigit=shared.some(t=>/\d/.test(t));
-  return (shared.length>=2||(shared.length>=1&&hasDigit))?shared.length+(hasDigit?1:0):0;
+  if(conflictingKnownBrand(a,b)||!compatibleCategory(a,b))return 0;
+  const ta=tokens(a.name),tb=new Set(tokens(b.name));
+  const shared=unique(ta.filter(t=>tb.has(t)));
+  const sharedModel=modelTokens(a.name).filter(t=>modelTokens(b.name).includes(t));
+  const sharedNumber=numberTokens(a.name).filter(t=>numberTokens(b.name).includes(t));
+  const strongShared=shared.filter(t=>/[a-z]/.test(t)&&!GENERIC_MODEL.has(t));
+  const brandOk=sameKnownBrand(a,b);
+  if(brandOk&&sharedModel.length)return 12+sharedModel.length*3+strongShared.length;
+  if(brandOk&&strongShared.length>=2&&sharedNumber.length)return 10+strongShared.length+sharedNumber.length;
+  if(brandOk&&strongShared.length>=3)return 8+strongShared.length;
+  if((!a.brand||!b.brand)&&sharedModel.length&&strongShared.length>=2)return 7+sharedModel.length+strongShared.length;
+  return 0;
 }
 function matchesFor(url){
-  const it=hist.items[url];if(!it)return[];
+  const it=hist.items[url];if(!it||!isMeasured(url))return[];
   return Object.entries(hist.items)
-    .filter(([u,o])=>u!==url&&o.me!==it.me&&isActive(o))
-    .map(([u,o])=>({url:u,it:o,score:matchScore(it.name,o.name)}))
-    .filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+    .filter(([u,o])=>u!==url&&o.me!==it.me&&isActive(o)&&isMeasured(u))
+    .map(([u,o])=>({url:u,it:o,score:matchScore(it,o)}))
+    .filter(x=>x.score>=7).sort((a,b)=>b.score-a.score).slice(0,6);
 }
 function itemList(){
   return Object.entries(hist.items).map(([url,it])=>({url,...it}))
@@ -153,7 +188,7 @@ function cheapestMatch(url){
 function brandRows(){
   const rows={};
   Object.entries(hist.items).forEach(([u,it])=>{
-    if(!it.me||!isActive(it))return;
+    if(!it.me||!isActive(it)||!isMeasured(u))return;
     if(brand!=="all"&&brandKey(it.brand)!==brand)return;
     if(q&&![it.name,it.brand,it.category].filter(Boolean).join(" ").toLowerCase().includes(q))return;
     const b=it.brand||"Chưa nhận diện";
@@ -170,19 +205,19 @@ function brandRows(){
   return Object.values(rows).sort((a,b)=>b.matched-a.matched||b.total-a.total||a.brand.localeCompare(b.brand,"vi"));
 }
 function renderKpis(){
-  const all=Object.values(hist.items).filter(isActive);
+  const all=Object.entries(hist.items).filter(([u,it])=>isActive(it)&&isMeasured(u)).map(([,it])=>it);
   const mine=all.filter(i=>i.me).length,comp=all.length-mine;
   const lastRun=hist.runs[hist.runs.length-1];
   let win=0,tot=0;
   Object.entries(hist.items).forEach(([u,it])=>{
-    if(!it.me||!isActive(it))return;const ms=matchesFor(u).filter(m=>m.score>=2);
+    if(!it.me||!isActive(it)||!isMeasured(u))return;const ms=matchesFor(u);
     if(!ms.length)return;tot++;
     const myP=it.hist[it.hist.length-1].p;
     if(ms.every(m=>myP<=m.it.hist[m.it.hist.length-1].p))win++;
   });
   $("kpis").innerHTML=`
-    <div class="kpi"><div class="lbl">SP đối thủ theo dõi</div><div class="val">${comp}</div></div>
-    <div class="kpi"><div class="lbl">SP của XDGK</div><div class="val" style="color:var(--accent)">${mine}</div></div>
+    <div class="kpi"><div class="lbl">SP đối thủ đo lường</div><div class="val">${comp}</div></div>
+    <div class="kpi"><div class="lbl">SP XDGK đo lường</div><div class="val" style="color:var(--accent)">${mine}</div></div>
     <div class="kpi"><div class="lbl">SP khớp — XDGK rẻ hơn</div><div class="val good">${tot?win+"/"+tot:"—"}</div></div>
     <div class="kpi"><div class="lbl">Thay đổi giá lần cào cuối</div><div class="val ${lastRun&&lastRun.changed?"warn":""}">${lastRun?lastRun.changed:"—"}</div></div>`;
   $("lastRun").textContent=lastRun?("Cập nhật: "+new Date(lastRun.t).toLocaleString("vi-VN")):"Chưa có dữ liệu";
@@ -209,19 +244,20 @@ function renderTable(){
       }).join("")}</tbody></table>`:'<div class="empty">Chưa có dữ liệu thương hiệu trong phạm vi lọc này.</div>';
   }else if(view==="market"){
     const list=itemList().sort((a,b)=>{const da=delta(a),db=delta(b);return Math.abs(db?db.pct:0)-Math.abs(da?da.pct:0)||a.name.localeCompare(b.name)});
-    w.innerHTML=`<table><thead><tr><th>Sản phẩm</th><th>Web</th><th>Giá hiện tại</th><th>Δ so lần trước</th></tr></thead><tbody>${
+    w.innerHTML=`<table><thead><tr><th class="measure-cell">Đo</th><th>Sản phẩm</th><th>Web</th><th>Giá hiện tại</th><th>Δ so lần trước</th></tr></thead><tbody>${
       list.map(it=>{
         const d=delta(it),p=it.hist[it.hist.length-1].p;
         const dc=d?(d.v>0?`<span class="chg up">▲ ${fmt(d.v)}</span>`:`<span class="chg down">▼ ${fmt(-d.v)}</span>`):`<span class="chg flat">—</span>`;
-        const rc=it.me?"#f26522":REGION[it.region].cc;
+        const rc=it.me?"#f26522":regionInfo(it.region).cc;
         const meta=[it.brand,it.category].filter(Boolean).join(" · ");
-        return `<tr data-u="${esc(it.url)}" class="${it.url===selected?"sel":""}">
+        return `<tr data-u="${esc(it.url)}" class="${it.url===selected?"sel":""} ${isMeasured(it.url)?"":"skip"}">
+          <td class="measure-cell">${measureBox(it.url)}</td>
           <td class="pn"><b>${esc(it.name)}</b>${meta?`<span class="hint">${esc(meta)}</span>`:""}</td>
           <td><span class="rtag" style="color:${rc};background:${rc}18">${esc(it.seller)}</span></td>
           <td><span class="price ${it.me?"me":""}">${fmt(p)}</span></td><td>${dc}</td></tr>`;
       }).join("")}</tbody></table>`;
   }else{
-    const rows=Object.entries(hist.items).filter(([u,it])=>it.me&&isActive(it)).map(([u,it])=>{
+    const rows=Object.entries(hist.items).filter(([u,it])=>it.me&&isActive(it)&&isMeasured(u)).map(([u,it])=>{
       const ms=matchesFor(u).filter(m=>region==="all"||region==="me"||m.it.region===region);
       if(!ms.length)return null;
       const myP=it.hist[it.hist.length-1].p;
@@ -241,16 +277,17 @@ function renderTable(){
       </tr>`).join("")}</tbody></table>`
       :'<div class="empty">Chưa tìm thấy sản phẩm nào khớp tên giữa XDGK và đối thủ trong phạm vi lọc này.</div>';
   }
+  bindMeasureControls();
   w.querySelectorAll("tbody tr").forEach(tr=>tr.onclick=()=>{selected=tr.dataset.u;renderTable();renderDetail()});
 }
 function renderDetail(){
   const it=hist.items[selected];
   if(!it||!isActive(it)){if(chart){chart.destroy();chart=null}return}
   $("dTitle").textContent=it.name;
-  $("dSub").innerHTML=`${esc(it.seller)} · <a href="${esc(selected)}" target="_blank" rel="noopener">mở trang sản phẩm ↗</a>`;
+  $("dSub").innerHTML=`<label class="measure-line">${measureBox(selected)} Đo lường so sánh</label>${esc(it.seller)} · <a href="${esc(selected)}" target="_blank" rel="noopener">mở trang sản phẩm ↗</a>`;
   const ms=matchesFor(selected);
-  const series=[{label:it.seller,data:it.hist,color:it.me?"#f26522":REGION[it.region].cc,w:3}]
-    .concat(ms.slice(0,4).map(m=>({label:m.it.seller,data:m.it.hist,color:m.it.me?"#f26522":REGION[m.it.region].cc,w:1.5})));
+  const series=[{label:it.seller,data:it.hist,color:it.me?"#f26522":regionInfo(it.region).cc,w:3}]
+    .concat(ms.slice(0,4).map(m=>({label:m.it.seller,data:m.it.hist,color:m.it.me?"#f26522":regionInfo(m.it.region).cc,w:1.5})));
   const allT=[...new Set(series.flatMap(s=>s.data.map(d=>d.t)))].sort((a,b)=>a-b);
   const labels=allT.map(t=>new Date(t).toLocaleDateString("vi-VN",{day:"numeric",month:"numeric"}));
   const ds=series.map(s=>{
@@ -271,13 +308,15 @@ function renderDetail(){
         plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y?fmt(c.parsed.y):"")}}},
         scales:{y:{ticks:{callback:v=>(v/1e6).toFixed(1)+"tr"}},x:{grid:{display:false}}}}});
   }
-  $("dMatches").innerHTML=chartNote+(ms.length?"<p class='hint' style='margin:6px 0'>Sản phẩm khớp tên (tự động):</p>"+ms.map(m=>{
+  const measureNote=isMeasured(selected)?"":"<p class='hint' style='margin:6px 0'>Sản phẩm này đang được loại khỏi phần so sánh.</p>";
+  $("dMatches").innerHTML=chartNote+measureNote+(ms.length?"<p class='hint' style='margin:6px 0'>Sản phẩm khớp theo thương hiệu/model (tự động):</p>"+ms.map(m=>{
     const p=m.it.hist[m.it.hist.length-1].p;
-    const rc=m.it.me?"#f26522":REGION[m.it.region].cc;
+    const rc=m.it.me?"#f26522":regionInfo(m.it.region).cc;
     return `<div class="mrow"><span style="width:8px;height:8px;border-radius:50%;background:${rc};flex:0 0 auto"></span>
       <span class="nm">${esc(m.it.name)} <span class="hint">· ${esc(m.it.seller)}</span></span>
       <span class="price">${fmt(p)}</span></div>`;
-  }).join(""):"<p class='hint' style='margin-top:6px'>Chưa có sản phẩm khớp tên ở web khác.</p>");
+  }).join(""):"<p class='hint' style='margin-top:6px'>Chưa có sản phẩm khớp đủ chắc ở web khác.</p>");
+  bindMeasureControls();
 }
 function renderAll(){renderBrandFilter();renderKpis();renderTable();renderDetail()}
 
